@@ -1,10 +1,9 @@
 import customtkinter as ctk
-from config import APP_TITLE, APP_SIZE, BG_COLOR, PANEL_BG, FOREGROUND_COLOR, SECONDARY_TEXT, ACCENT_COLOR, OPERATOR_PROFILES
+from config import APP_TITLE, APP_SIZE, BG_COLOR
 from modules.targets import CATEGORIES
 from modules.ui.sidebar import Sidebar
 from modules.ui.main_panel import MainPanel
 from modules.ui.log_panel import LogPanel
-from modules.ui.profile_panel import ProfilePanel
 
 
 def create_theme():
@@ -22,10 +21,33 @@ class HackerSimulatorApp(ctk.CTk):
 
         self.selected_category = CATEGORIES[0]
         self.selected_target = None
-        self.profile_name = OPERATOR_PROFILES[1]["name"]
+        self.profile_name = "Intermédiaire"
+        self.inventory = set()
 
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=0)
+        self.grid_columnconfigure(0, minsize=320)
         self.grid_columnconfigure(1, weight=1)
+
+        self.header = ctk.CTkFrame(self, fg_color="#131820")
+        self.header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=16, pady=(16, 0))
+        self.header.columnconfigure(0, weight=1)
+        self.header.columnconfigure(1, weight=0)
+        self.header.columnconfigure(2, weight=0)
+
+        header_label = ctk.CTkLabel(
+            self.header,
+            text=APP_TITLE,
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#66fcf1",
+        )
+        header_label.grid(row=0, column=0, sticky="w", padx=12, pady=12)
+
+        home_button = ctk.CTkButton(self.header, text="Accueil", command=self.show_home, fg_color="#1f2833")
+        home_button.grid(row=0, column=1, sticky="e", padx=(0, 8), pady=12)
+        inventory_button = ctk.CTkButton(self.header, text="Inventaire", command=self.show_inventory, fg_color="#45a29e")
+        inventory_button.grid(row=0, column=2, sticky="e", padx=(0, 12), pady=12)
 
         self.sidebar = Sidebar(
             self,
@@ -33,26 +55,40 @@ class HackerSimulatorApp(ctk.CTk):
             on_category_selected=self.on_category_selected,
             on_target_selected=self.on_target_selected,
         )
-        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=(16, 8), pady=16)
+        self.sidebar.grid(row=1, column=0, sticky="nsew", padx=(16, 8), pady=16)
 
-        self.main_panel = MainPanel(self, on_start_hack=self.on_start_hack, on_request_log=self.add_log)
-        self.main_panel.grid(row=0, column=1, sticky="nsew", padx=(8, 16), pady=16)
-
-        self.profile_panel = ProfilePanel(
+        self.main_panel = MainPanel(
             self,
-            profiles=OPERATOR_PROFILES,
-            initial_profile=self.profile_name,
-            on_profile_changed=self.on_profile_changed,
+            on_start_hack=self.on_start_hack,
+            on_request_log=self.add_log,
+            on_show_inventory=self.show_inventory,
+            on_toggle_sidebar=self.set_sidebar_visible,
+            inventory=self.inventory,
         )
-        self.profile_panel.grid(row=1, column=0, columnspan=2, sticky="ew", padx=16, pady=(0, 16))
+        self.main_panel.grid(row=1, column=1, sticky="nsew", padx=(8, 16), pady=16)
 
         self.log_panel = LogPanel(self)
         self.log_panel.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=16, pady=(0, 16))
-        self.grid_rowconfigure(2, weight=0)
 
         self.sidebar.select_category(self.selected_category["key"])
-        self.main_panel.show_placeholder()
+        self.main_panel.show_home_page()
         self.add_log("Bingus Hack Simulator démarré.")
+
+    def show_home(self):
+        self.set_sidebar_visible(False)
+        self.main_panel.show_home_page()
+        self.add_log("Retour à l'accueil.")
+
+    def show_inventory(self):
+        self.sidebar.grid()
+        self.main_panel.show_inventory_page()
+        self.add_log("Ouverture de l'inventaire.")
+
+    def set_sidebar_visible(self, visible: bool):
+        if visible:
+            self.sidebar.grid()
+        else:
+            self.sidebar.grid_remove()
 
     def on_category_selected(self, category):
         self.selected_category = category
@@ -66,11 +102,6 @@ class HackerSimulatorApp(ctk.CTk):
     def on_start_hack(self, target):
         self.add_log(f"Préparation du hacking : {target['name']}")
         self.main_panel.start_hack(target, self.profile_name)
-
-    def on_profile_changed(self, profile_name):
-        self.profile_name = profile_name
-        self.add_log(f"Profil opérateur activé : {profile_name}")
-        self.profile_panel.update_description(profile_name)
 
     def add_log(self, message):
         self.log_panel.add_log(message)

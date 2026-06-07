@@ -3,7 +3,7 @@ import customtkinter as ctk
 
 
 class WiringGame(ctk.CTkFrame):
-    def __init__(self, parent, target, on_complete, profile=None, **kwargs):
+    def __init__(self, parent, target, on_complete, profile=None, custom_title=None, custom_instruction=None, custom_hint=None, **kwargs):
         super().__init__(parent, fg_color="#131820", **kwargs)
         self.on_complete = on_complete
         self.pairs = self._build_pairs()
@@ -12,14 +12,20 @@ class WiringGame(ctk.CTkFrame):
 
         self.columnconfigure(0, weight=1)
 
-        title = ctk.CTkLabel(self, text="Mini-jeu : Câblage", font=ctk.CTkFont(size=18, weight="bold"), text_color="#66fcf1")
+        title_text = custom_title or "Mini-jeu : Câblage"
+        title = ctk.CTkLabel(self, text=title_text, font=ctk.CTkFont(size=18, weight="bold"), text_color="#66fcf1")
         title.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 8))
 
-        instructions = ctk.CTkLabel(self, text="Reliez les bons fils entre eux.", text_color="#c5c6c7")
+        instruction_text = custom_instruction or "Reliez les bons fils entre eux."
+        instructions = ctk.CTkLabel(self, text=instruction_text, text_color="#c5c6c7", wraplength=700, justify="left")
         instructions.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
 
+        hint_text = custom_hint or "Interaction attendue : sélectionnez un fil à gauche puis sa destination à droite."
+        self.hint_label = ctk.CTkLabel(self, text=hint_text, text_color="#8be9fd", wraplength=700, justify="left")
+        self.hint_label.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 8))
+
         self.grid_frame = ctk.CTkFrame(self, fg_color="#0b0c10")
-        self.grid_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=12)
+        self.grid_frame.grid(row=3, column=0, sticky="ew", padx=12, pady=12)
         self.grid_frame.columnconfigure((0, 1), weight=1)
 
         self.left_buttons = {}

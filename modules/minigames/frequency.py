@@ -3,18 +3,23 @@ import customtkinter as ctk
 
 
 class FrequencySweepGame(ctk.CTkFrame):
-    def __init__(self, parent, target, on_complete, profile=None, **kwargs):
+    def __init__(self, parent, target, on_complete, profile=None, custom_title=None, custom_instruction=None, custom_hint=None, **kwargs):
         super().__init__(parent, fg_color="#131820", **kwargs)
         self.on_complete = on_complete
         self.secret_frequency = random.randint(24, 78)
 
         self.columnconfigure(0, weight=1)
 
-        title = ctk.CTkLabel(self, text="Mini-jeu : Balayage de fréquences", font=ctk.CTkFont(size=18, weight="bold"), text_color="#66fcf1")
+        title_text = custom_title or "Mini-jeu : Balayage de fréquences"
+        title = ctk.CTkLabel(self, text=title_text, font=ctk.CTkFont(size=18, weight="bold"), text_color="#66fcf1")
         title.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 8))
 
-        self.instructions = ctk.CTkLabel(self, text="Faites glisser le curseur jusqu'à la fréquence la plus stable.", text_color="#c5c6c7")
+        self.instructions = ctk.CTkLabel(self, text=custom_instruction or "Faites glisser le curseur jusqu'à la fréquence la plus stable.", text_color="#c5c6c7", wraplength=700, justify="left")
         self.instructions.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
+
+        hint_text = custom_hint or "Interaction attendue : ajustez la fréquence puis lancez le scan."
+        self.hint_label = ctk.CTkLabel(self, text=hint_text, text_color="#8be9fd", wraplength=700, justify="left")
+        self.hint_label.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 8))
 
         self.slider = ctk.CTkSlider(self, from_=20, to=80, number_of_steps=60, command=self._update_frequency)
         self.slider.set(50)

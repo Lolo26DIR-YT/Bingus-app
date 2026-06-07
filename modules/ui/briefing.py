@@ -34,12 +34,15 @@ class BriefingDialog(ctk.CTkToplevel):
             f"🎯 CIBLE : {target['name']}\n"
             f"📍 DISTANCE REQUISE : {target['distance_label']}\n"
             f"🔴 NIVEAU DE RISQUE : {target['risk']}/5\n"
+            f"🚨 Alerte probable : {target.get('alert_type', 'Police locale')}\n"
             f"⏱️ DURÉE ESTIMÉE : {target['duration']} secondes\n\n"
             f"🧰 OUTILS REQUIS :\n"
             + "\n".join([f"  • {tool}" for tool in target["tools"]])
             + "\n\n"
             f"Profil opérateur : {profile_name}\n"
-            f"Interaction attendue : {target['interaction']}\n\n"
+            f"Interaction attendue : {target['interaction']}\n"
+            f"Phase manuelle requise : Oui\n"
+            f"Une fenêtre dédiée s'ouvre pour le hack manuel. Cliquez sur Fait pour poursuivre.\n\n"
             f"Résumé : {target['rp_description']}"
         )
 

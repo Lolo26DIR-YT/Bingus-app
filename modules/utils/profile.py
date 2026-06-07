@@ -12,7 +12,7 @@ class OperatorProfile:
             self.modifier = 0.7
 
     def adjust_duration(self, base_seconds):
-        return int(base_seconds * self.modifier)
+        return int(base_seconds)
 
     def reduce_risk(self, risk_value):
         if self.name == "Ghost":
