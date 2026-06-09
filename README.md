@@ -1,12 +1,6 @@
 Bingus Hack Simulator est un outil de rôle pour GTA RP / FiveM.
 
-Installation :
-
-```
-pip install -r requirements.txt
-```
-
-Lancement :
+LancemPour lancer l'app il faut executez le fichier suivant :
 
 ```
 python bingus_hack_panel.py
