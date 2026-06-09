@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Lancer Bingus Hack Simulator",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/bingus_hack_panel.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

@@ -2,22 +2,26 @@ import customtkinter as ctk
 import random
 import os
 from modules.targets import CATEGORIES
-from modules.equipment import STORE_ITEMS
 from modules.ui.briefing import BriefingDialog
 from modules.ui.video_player import VideoBackgroundPlayer
 
 
 class HybridHackGame(ctk.CTkFrame):
-    def __init__(self, parent, target, on_complete=None, profile=None, **kwargs):
+    def __init__(self, parent, target, on_complete=None, **kwargs):
         super().__init__(parent, fg_color="#131820", **kwargs)
         self.target = target
         self.on_complete = on_complete
-        self.profile = profile
         self.step_index = 0
         self.phase = "auto"
+
+        base_duration = self.target.get("duration", 30)
+        self.total_duration = base_duration + 5 
+        self.remaining_seconds = self.total_duration
         
-        self.total_duration = random.uniform(3, 20)
-        self.start_time = None
+        self.total_duration = target.get("duration", 30)
+        self.remaining_seconds = self.total_duration
+
+        # --- CALCUL DYNAMIQUE DU DÉLAI ---
         self.all_phases = [
             f"Analyseur réseau passif de {target.get('name', 'Cible')} en cours...",
             "Collecte des métadonnées en arrière-plan...",
@@ -31,320 +35,296 @@ class HybridHackGame(ctk.CTkFrame):
             "Vérification des traces résiduelles...",
             "Hack terminé avec succès!",
         ]
+        
+        total_steps = len(self.all_phases) - 1
+        target_duration = max(target.get("duration", 30), 1)
+        self.step_delay = int((target_duration * 1000) / total_steps)
+
+        # Configuration de la grille
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
 
         # Titre Cyber
         self.title_label = ctk.CTkLabel(
-            self,
-            text="Exécution du piratage automatique",
-            font=ctk.CTkFont(family="JetBrains Mono", size=22, weight="bold"),
+            self, 
+            text=f"PIRATAGE : {target.get('name', 'Cible').upper()}", 
+            font=ctk.CTkFont(size=18, weight="bold"), 
             text_color="#66fcf1"
         )
-        self.title_label.pack(pady=(40, 20))
+        self.title_label.grid(row=0, column=0, padx=20, pady=15, sticky="w")
 
-        # Texte d'étape très visible (Blanc)
-        self.phase_label = ctk.CTkLabel(
-            self,
-            text=self.all_phases[0],
-            font=ctk.CTkFont(family="JetBrains Mono", size=14, weight="normal"),
-            text_color="#ffffff"
-        )
-        self.phase_label.pack(pady=(10, 15))
+        # Zone d'affichage de la console
+        self.console_box = ctk.CTkTextbox(self, fg_color="#0b0c10", text_color="#45a29e", font=ctk.CTkFont(family="Courier", size=13), corner_radius=8)
+        self.console_box.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="nsew")
 
-        # Barre de chargement Néon Cyan
-        self.progress_bar = ctk.CTkProgressBar(
-            self,
-            width=500,
-            height=15,
-            progress_color="#66fcf1",
-            fg_color="#1f2833"
-        )
+        # --- LABEL DU MINUTEUR (C'est lui qui manquait !) ---
+        self.timer_label = ctk.CTkLabel(self, text="Temps estimé : --s", text_color="#66fcf1", font=ctk.CTkFont(size=12))
+        self.timer_label.grid(row=2, column=0, padx=20, pady=(0, 5), sticky="e")
+
+        # Barre de progression
+        self.progress_bar = ctk.CTkProgressBar(self, progress_color="#66fcf1", fg_color="#1f2833")
+        self.progress_bar.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
         self.progress_bar.set(0)
-        self.progress_bar.pack(pady=(10, 40))
 
+        # Bouton d'action
+        self.action_button = ctk.CTkButton(
+            self, 
+            text="INITIALISATION...", 
+            font=ctk.CTkFont(weight="bold"),
+            fg_color="#45a29e", 
+            hover_color="#66fcf1", 
+            text_color="#0b0c10",
+            height=40,
+            command=self.on_action_click
+        )
+        self.action_button.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+
+        # Écoute de la touche Entrée
+        self.winfo_toplevel().bind("<Return>", self.on_enter_pressed)
+
+        # Lancement automatique (maintenant que timer_label existe, ça ne plantera plus)
         self.start_auto_phase()
+        self.update_timer()
+
+    def update_timer(self):
+        # On ne travaille que si on est en phase "auto"
+        if self.phase == "auto":
+            if self.remaining_seconds > 0:
+                # On diminue simplement la valeur existante
+                self.remaining_seconds -= 1
+                self.timer_label.configure(text=f"Temps restant : {self.remaining_seconds}s")
+                
+                # On relance la fonction dans 1 seconde
+                self.after(1000, self.update_timer)
+            else:
+                self.timer_label.configure(text="Temps écoulé !")
+                # Ici tu peux appeler ta fonction de fin de hack
 
     def start_auto_phase(self):
-        import time
-        self.start_time = time.time()
-        self._update_loop()
+        if self.step_index < len(self.all_phases) - 1:
+            # --- Calcul du temps restant ---
+            steps_left = (len(self.all_phases) - 1) - self.step_index
+            seconds_left = int(steps_left * (self.step_delay / 1000))
+            self.timer_label.configure(text=f"Temps restant : {seconds_left}s")
+            # -------------------------------
 
-    def _update_loop(self):
-        import time
-        elapsed = time.time() - self.start_time
-        progress = min(elapsed / self.total_duration, 1.0)
-        self.progress_bar.set(progress)
-
-        num_phases = len(self.all_phases) - 1
-        current_step = int(progress * num_phases)
-        if current_step < len(self.all_phases):
-            self.phase_label.configure(text=self.all_phases[current_step])
-
-        if progress < 1.0:
-            self.after(50, self._update_loop)
+            current_text = self.all_phases[self.step_index]
+            self.console_box.insert("end", f"[SYSTEM] {current_text}\n")
+            self.console_box.see("end")
+            
+            progress_val = (self.step_index + 1) / (len(self.all_phases) - 1)
+            self.progress_bar.set(progress_val)
+            
+            self.step_index += 1
+            self.after(self.step_delay, self.start_auto_phase)
         else:
-            self.phase_label.configure(text=self.all_phases[-1])
-            self.after(1000, self.finish_game)
+            self.timer_label.configure(text="SÉQUENCE TERMINÉE")
+            self.phase = "manual"
+            self.progress_bar.set(0.9)
+            self.action_button.configure(text=f"APPUYER SUR ENTRÉE POUR INJECTER LE CODE FINAL")
+            self.console_box.insert("end", "\n[ATTENTION] Séquence finale en attente de validation manuelle...\n")
+            self.console_box.see("end")
 
-    def finish_game(self):
-        if self.on_complete:
-            self.on_complete(True)
+    def on_enter_pressed(self, event):
+        self.on_action_click()
 
+    def on_action_click(self):
+        if self.phase == "manual":
+            roll = random.randint(1, 240)
 
+            # 1. BLOCAGE SYSTÈME (Rouge)
+            if roll <= 15:
+                self.phase = "failed_blocked"
+                self.progress_bar.set(0.0)
+                self.progress_bar.configure(progress_color="#ff4d4d")
+                
+                self.console_box.insert("end", "\n[CRITICAL ERROR] CONTRE-MESURE DETECTEE !\n", "red")
+                self.console_box.insert("end", "[SYSTEM] Système verrouillé. Terminal hors-ligne.\n", "red")
+                self.console_box.see("end")
+                
+                self.action_button.configure(text="SYSTÈME BLOQUÉ - FERMER", fg_color="#ff4d4d")
+                if self.on_complete:
+                    self.on_complete(False)
+
+            # 2. ALERTE FDO (Bleu)
+            elif roll <= 15 + 12:
+                self.phase = "failed_fdo"
+                self.progress_bar.set(0.0)
+                self.progress_bar.configure(progress_color="#00d2d3")
+                
+                self.console_box.insert("end", "\n[ALERTE] TRANSMISSION COMPROMISE !\n", "blue")
+                self.console_box.insert("end", "[INFO] Forces de l'ordre alertées.\n", "blue")
+                
+                # --- FORCER L'AFFICHAGE ---
+                self.update_idletasks() # Recalcule la mise en page
+                self.console_box.see("end") # Scrolle vers le bas
+                
+                self.action_button.configure(text="ALERTE FDO - QUITTER", fg_color="#00d2d3")
+                
+                # Affichage de la bannière
+                if self.master and hasattr(self.master.master, "_show_failure_banner"):
+                    self.master.master._show_failure_banner(self.target)
+                    
+                if self.on_complete:
+                    self.on_complete(False, reason="FDO")
+
+            # 3. ÉCHEC STANDARD (Orange)
+            elif roll <= 15 + 12 + 48:
+                self.phase = "failed_standard"
+                self.progress_bar.set(0.0)
+                self.progress_bar.configure(progress_color="#ff9f43")
+                
+                self.console_box.insert("end", "\n[ÉCHEC] INJECTION REJETÉE par le pare-feu.\n", "orange")
+                self.console_box.insert("end", "[RETRY] Connexion perdue.\n", "orange")
+                self.console_box.see("end")
+                
+                self.action_button.configure(text="ÉCHEC DU HACK - FERMER", fg_color="#ff9f43")
+                if self.on_complete:
+                    self.on_complete(False)
+
+            # 4. SUCCÈS (Vert)
+            else:
+                self.phase = "complete"
+                self.progress_bar.set(1.0)
+                self.console_box.insert("end", "\n[SUCCÈS] Injection validée ! Accès total accordé.\n", "green")
+                self.console_box.see("end")
+                self.action_button.configure(text="FERMER L'INTERFACE", fg_color="#28a745")
+                if self.on_complete:
+                    self.on_complete(True)
+
+        # Gestion de la fermeture (clic sur le bouton après résultat)
+        elif self.phase in ["complete", "failed_standard", "failed_blocked", "failed_fdo"]:
+            # On retire la bannière de police si elle est affichée
+            if self.master and hasattr(self.master.master, "failure_banner"):
+                self.master.master.failure_banner.grid_remove()
+            
+            # Nettoyage clavier et destruction
+            self.winfo_toplevel().unbind("<Return>")
+            self.destroy()
 class MainPanel(ctk.CTkFrame):
-    def __init__(self, parent, on_start_hack, on_request_log, on_show_inventory, on_toggle_sidebar, inventory=None, **kwargs):
-        super().__init__(parent, fg_color="#0b0c10", **kwargs)
-        self.on_start_hack = on_start_hack
+    def __init__(self, parent, on_request_log=None, on_start_hack=None, on_toggle_sidebar=None, **kwargs):
+        super().__init__(parent, fg_color="#131820", corner_radius=0, **kwargs)
         self.on_request_log = on_request_log
-        self.on_show_inventory = on_show_inventory
+        self.on_start_hack = on_start_hack
         self.on_toggle_sidebar = on_toggle_sidebar
-        self.inventory = inventory if inventory is not None else set()
-        
         self.current_target = None
-        self.active_game = None
         self._video_player = None
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=0)  
+        self.rowconfigure(1, weight=1)  
+        self.rowconfigure(2, weight=0)  
 
-        # Conteneur pour les pages statiques
-        self.info_frame = ctk.CTkFrame(self, fg_color="#131820", border_width=1, border_color="#1f2833")
-        self.info_frame.grid(row=0, column=0, sticky="nsew")
-        self.info_frame.grid_rowconfigure(0, weight=1)
-        self.info_frame.grid_columnconfigure(0, weight=1)
-
-        # Bannière d'échec rouge
+        # 1. Bannière d'alerte Police
         self.failure_banner = ctk.CTkLabel(
             self,
             text="",
-            font=ctk.CTkFont(family="JetBrains Mono", size=16, weight="bold"),
-            fg_color="#ff5555",
-            text_color="#ffffff",
-            height=40
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color="#721c24",
+            text_color="#f8d7da",
+            height=35,
+            corner_radius=6
         )
-        self.failure_banner.grid(row=1, column=0, sticky="ew", pady=(10,0))
+        self.failure_banner.grid(row=0, column=0, padx=20, pady=(15, 0), sticky="ew")
         self.failure_banner.grid_remove()
+        
 
-    def show_home_page(self):
-        self._reset_view()
-        for widget in self.info_frame.winfo_children():
-            widget.destroy()
+        # 2. Zone de Contenu Dynamique
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.content_frame.grid(row=1, column=0, sticky="nsew")
+        self.content_frame.columnconfigure(0, weight=1)
+        self.content_frame.rowconfigure(0, weight=1)
 
-        home_label = ctk.CTkLabel(
-            self.info_frame,
-            text="SÉLECTIONNEZ UNE CIBLE DANS LA SIDEBAR POUR COMMENCER",
-            font=ctk.CTkFont(family="JetBrains Mono", size=16, weight="bold"),
-            text_color="#66fcf1"
-        )
-        home_label.grid(row=0, column=0, padx=20, pady=20)
+        # 3. Bas de page épuré
+        self.setup_profile_footer()
 
-    def show_inventory_page(self):
-        self._reset_view()
-        for widget in self.info_frame.winfo_children():
-            widget.destroy()
+        # Affichage de l'écran d'accueil de base
+        self.show_welcome_screen()
 
-        scroll = ctk.CTkScrollableFrame(self.info_frame, fg_color="transparent")
-        scroll.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        scroll.grid_columnconfigure(0, weight=1)
+    def setup_profile_footer(self):
+        self.footer_frame = ctk.CTkFrame(self, fg_color="#0b0c10", height=70, corner_radius=10)
+        self.footer_frame.grid(row=2, column=0, padx=20, pady=20, sticky="ew")
+        self.footer_frame.grid_propagate(False)
+        
+        self.footer_frame.columnconfigure(0, weight=1)
+        self.footer_frame.rowconfigure(0, weight=1)
 
-        title = ctk.CTkLabel(
-            scroll, 
-            text="VOTRE MATÉRIEL CYBER", 
-            font=ctk.CTkFont(family="JetBrains Mono", size=18, weight="bold"),
-            text_color="#66fcf1"
-        )
-        title.grid(row=0, column=0, sticky="w", pady=(0, 20))
-
-        if not self.inventory:
-            empty = ctk.CTkLabel(
-                scroll, 
-                text="Aucun équipement acheté. Visitez la boutique d'une cible pour vous équiper.",
-                font=ctk.CTkFont(family="JetBrains Mono", size=13),
-                text_color="#c5c6c7"
-            )
-            empty.grid(row=1, column=0, sticky="w")
-            return
-
-        for idx, item_name in enumerate(sorted(self.inventory)):
-            item_desc = STORE_ITEMS.get(item_name, "Équipement spécialisé")
-            item_frame = ctk.CTkFrame(scroll, fg_color="#1f2833", border_width=1, border_color="#45a29e")
-            item_frame.grid(row=idx+1, column=0, sticky="ew", pady=5)
-            item_frame.grid_columnconfigure(1, weight=1)
-
-            lbl_name = ctk.CTkLabel(item_frame, text=f"🔧 {item_name}", font=ctk.CTkFont(family="JetBrains Mono", size=14, weight="bold"), text_color="#66fcf1")
-            lbl_name.grid(row=0, column=0, padx=15, pady=10, sticky="w")
-
-            lbl_desc = ctk.CTkLabel(item_frame, text=item_desc, font=ctk.CTkFont(family="JetBrains Mono", size=12), text_color="#c5c6c7", justify="left")
-            lbl_desc.grid(row=0, column=1, padx=15, pady=10, sticky="w")
-
-    def show_target(self, target):
-        self._reset_view()
-        for widget in self.info_frame.winfo_children():
-            widget.destroy()
-
-        self.current_target = target
-        self.failure_banner.grid_remove()
-        self.info_frame.grid()
-
-        scroll = ctk.CTkScrollableFrame(self.info_frame, fg_color="transparent")
-        scroll.grid(row=0, column=0, sticky="nsew", padx=25, pady=25)
-        scroll.grid_columnconfigure(0, weight=1)
-
-        # Nom de la Cible
-        tgt_title = ctk.CTkLabel(
-            scroll,
-            text=target.get("name", "CIBLE INCONNUE").upper(),
-            font=ctk.CTkFont(family="JetBrains Mono", size=24, weight="bold"),
-            text_color="#66fcf1"
-        )
-        tgt_title.grid(row=0, column=0, sticky="w", pady=(0, 5))
-
-        # IP et Distance
-        target_ip = target.get('ip', 'Inconnue')
-        target_distance = target.get('distance_label', 'Distance inconnue')
-
-        lbl_meta = ctk.CTkLabel(
-            scroll,
-            text=f"IP: {target_ip}  |  {target_distance}",
-            font=ctk.CTkFont(family="JetBrains Mono", size=12, weight="bold"),
-            text_color="#45a29e"
-        )
-        lbl_meta.grid(row=1, column=0, sticky="w", pady=(0, 20))
-
-        # Description / Consignes
-        lbl_desc = ctk.CTkLabel(
-            scroll,
-            text=target.get("description", "Aucune consigne disponible pour cette cible."),
-            font=ctk.CTkFont(family="JetBrains Mono", size=14),
-            text_color="#c5c6c7",
-            justify="left",
-            wraplength=600
-        )
-        lbl_desc.grid(row=2, column=0, sticky="w", pady=(0, 25))
-
-        # Analyse des systèmes de sécurité / Risques Polices
-        req_frame = ctk.CTkFrame(scroll, fg_color="#1f2833", border_width=1, border_color="#45a29e")
-        req_frame.grid(row=3, column=0, sticky="ew", pady=(0, 25))
-        req_frame.grid_columnconfigure(0, weight=1)
-
-        req_title = ctk.CTkLabel(req_frame, text="ANALYSE DES SYSTÈMES DE SÉCURITÉ", font=ctk.CTkFont(family="JetBrains Mono", size=13, weight="bold"), text_color="#66fcf1")
-        req_title.grid(row=0, column=0, sticky="w", padx=15, pady=(12, 8))
-
-        security_text = (
-            f"• Type d'Alerte : {target.get('alert_type', 'Basse')}\n"
-            f"• Difficulté Générale : {target.get('difficulty_label', 'Inconnue')}\n"
-            f"• Protection Périmétrique : {target.get('defense_label', 'Aucune')}"
-        )
-        req_lbl = ctk.CTkLabel(req_frame, text=security_text, font=ctk.CTkFont(family="JetBrains Mono", size=13), text_color="#c5c6c7", justify="left")
-        req_lbl.grid(row=1, column=0, sticky="w", padx=15, pady=(0, 15))
-
-        # Zone des Boutons d'Action (Lancement & Boutique)
-        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        btn_frame.grid(row=4, column=0, sticky="w", pady=10)
-
-        # CORRECTION : On va chercher profile_name dans l'application parent (master) ou "Intermédiaire" par défaut
-        profile = getattr(self.master, 'profile_name', 'Intermédiaire')
-
-        hack_btn = ctk.CTkButton(
-            btn_frame,
-            text="INJECTER EXPLOIT",
-            font=ctk.CTkFont(family="JetBrains Mono", size=14, weight="bold"),
+        self.briefing_btn = ctk.CTkButton(
+            self.footer_frame,
+            text="OUVRIR LE BRIEFING OPÉRATIONNEL",
+            font=ctk.CTkFont(weight="bold", size=13),
             fg_color="#45a29e",
             hover_color="#66fcf1",
             text_color="#0b0c10",
+            state="disabled",
             height=40,
-            width=180,
-            command=lambda: BriefingDialog(self, target, profile, self._on_briefing_result)
+            command=self.trigger_briefing
         )
-        hack_btn.grid(row=0, column=0, padx=(0, 15))
+        self.briefing_btn.grid(row=0, column=0, padx=20, sticky="ew")
 
-        store_btn = ctk.CTkButton(
-            btn_frame,
-            text="BLACK MARKET (BOUTIQUE)",
-            font=ctk.CTkFont(family="JetBrains Mono", size=14, weight="bold"),
-            fg_color="#1f2833",
-            hover_color="#45a29e",
-            text_color="#66fcf1",
-            height=40,
-            width=220,
-            command=self.show_store_page
-        )
-        store_btn.grid(row=0, column=1)
+    def show_home_page(self):
+        self.show_welcome_screen()
 
-    def show_store_page(self):
-        if not self.current_target:
-            return
-        self._reset_view()
-        for widget in self.info_frame.winfo_children():
+    def show_welcome_screen(self):
+        for widget in self.content_frame.winfo_children():
             widget.destroy()
 
-        scroll = ctk.CTkScrollableFrame(self.info_frame, fg_color="transparent")
-        scroll.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        scroll.grid_columnconfigure(0, weight=1)
-
-        target_name = self.current_target.get('name', 'Cible').upper()
-        title = ctk.CTkLabel(
-            scroll, 
-            text=f"BLACK MARKET — MATÉRIEL RECOMMANDÉ POUR {target_name}", 
-            font=ctk.CTkFont(family="JetBrains Mono", size=16, weight="bold"),
-            text_color="#66fcf1"
+        welcome_label = ctk.CTkLabel(
+            self.content_frame,
+            text="SÉLECTIONNEZ UNE CIBLE DANS LA SIDEBAR POUR COMMENCER",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#45a29e"
         )
-        title.grid(row=0, column=0, sticky="w", pady=(0, 20))
-
-        items_to_show = ["WiFi Pineapple", "Signal Analyser", "Antenna Extension", "SCADA Kit", "0-Day Kit"]
+        welcome_label.grid(row=0, column=0, padx=20, pady=20)
         
-        for idx, item_name in enumerate(items_to_show):
-            item_desc = STORE_ITEMS.get(item_name, "Équipement spécialisé pour les opérations réseau.")
-            item_frame = ctk.CTkFrame(scroll, fg_color="#1f2833", border_width=1, border_color="#1f2833")
-            item_frame.grid(row=idx+1, column=0, sticky="ew", pady=5)
-            item_frame.grid_columnconfigure(1, weight=1)
+        if hasattr(self, 'briefing_btn') and self.briefing_btn.winfo_exists():
+            self.briefing_btn.configure(state="disabled")
 
-            lbl_name = ctk.CTkLabel(item_frame, text=item_name, font=ctk.CTkFont(family="JetBrains Mono", size=14, weight="bold"), text_color="#66fcf1")
-            lbl_name.grid(row=0, column=0, padx=15, pady=15, sticky="w")
-
-            lbl_desc = ctk.CTkLabel(item_frame, text=item_desc, font=ctk.CTkFont(family="JetBrains Mono", size=12), text_color="#c5c6c7", justify="left", wraplength=400)
-            lbl_desc.grid(row=0, column=1, padx=15, pady=15, sticky="w")
-
-            if item_name in self.inventory:
-                btn_buy = ctk.CTkButton(item_frame, text="ACQUIS", state="disabled", fg_color="#131820", text_color="#45a29e", width=100)
-            else:
-                btn_buy = ctk.CTkButton(
-                    item_frame, 
-                    text="ACHETER", 
-                    fg_color="#45a29e", 
-                    hover_color="#66fcf1", 
-                    text_color="#0b0c10", 
-                    width=100,
-                    command=lambda name=item_name: self.buy_item(name)
-                )
-            btn_buy.grid(row=0, column=2, padx=15, pady=15, sticky="e")
-
-    def buy_item(self, item_name):
-        self.inventory.add(item_name)
-        self.on_request_log(f"Équipement acheté : {item_name}")
-        self.show_store_page()
-
-    def start_hack(self, target, profile):
-        self._reset_view()
+    def show_target(self, target):
         self.current_target = target
-        self.failure_banner.grid_remove()
-        self.on_toggle_sidebar(False)
+        # ICI : On cache la bannière dès qu'on sélectionne une nouvelle cible
+        self.failure_banner.grid_remove() 
+        
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
 
-        self.info_frame.grid_remove()
+        info_box = ctk.CTkFrame(self.content_frame, fg_color="#0b0c10", corner_radius=12)
+        info_box.grid(row=0, column=0, padx=40, pady=40, sticky="nsew")
+        info_box.columnconfigure(0, weight=1)
 
-        self.active_game = HybridHackGame(self, target, on_complete=self._on_hack_complete, profile=profile)
-        self.active_game.grid(row=0, column=0, sticky="nsew")
+        title = ctk.CTkLabel(info_box, text=target.get("name", "Cible"), font=ctk.CTkFont(size=22, weight="bold"), text_color="#66fcf1")
+        title.grid(row=0, column=0, pady=(30, 15))
 
-    def _on_hack_complete(self, success):
-        self.on_toggle_sidebar(True)
-        if self.active_game:
-            self.active_game.destroy()
-            self.active_game = None
+        desc = ctk.CTkLabel(info_box, text=target.get("rp_description", ""), font=ctk.CTkFont(size=13), text_color="#c5c6c7", wraplength=400, height=50)
+        desc.grid(row=1, column=0, pady=10, padx=20)
 
-        self.info_frame.grid()
+        self.briefing_btn.configure(state="normal")
 
+    def load_target(self, target):
+        self.show_target(target)
+
+    def trigger_briefing(self):
+        if self.current_target:
+            dialog = BriefingDialog(self, self.current_target, "Standard", self._on_briefing_result)
+            dialog.grab_set()
+
+    def start_hack(self, target, profile="Standard"):
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+
+        game = HybridHackGame(self.content_frame, target, on_complete=self.on_hack_complete)
+        game.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+
+        if self.on_request_log:
+            self.on_request_log(f"Initialisation de l'attaque sur {target.get('name')}")
+        if self.on_start_hack:
+            self.on_start_hack(target, profile)
+
+    # Ajoute "=None" ici pour éviter l'erreur "reason is not defined"
+    def on_hack_complete(self, success, reason=None):
         if success:
-            self.show_target(self.current_target)
-            self.on_request_log(f"Hack réussi sur : {self.current_target.get('name', 'Cible')}")
+            if self.on_request_log:
+                self.on_request_log(f"Hack réussi avec succès sur : {self.current_target.get('name', 'Cible')}")
             
             video_path = os.path.join("resources", "videos", "success_loop.mp4")
             if os.path.exists(video_path):
@@ -352,12 +332,15 @@ class MainPanel(ctk.CTkFrame):
                 self._video_player.play()
                 self.after(6000, self._video_player.stop)
         else:
-            self.on_request_log(f"Hack échoué : {self.current_target.get('name', 'Cible')}")
+            # On vérifie la raison ici
+            if reason == "FDO":
+                self.on_request_log(f"!!! ALERTE FDO !!! Trace activée sur {self.current_target.get('name')}")
+            else:
+                self.on_request_log(f"Hack échoué : {self.current_target.get('name', 'Cible')}")
 
     def _on_briefing_result(self, proceed):
         if proceed and self.current_target:
-            profile = getattr(self.master, 'profile_name', 'Intermédiaire')
-            self.start_hack(self.current_target, profile)
+            self.start_hack(self.current_target)
 
     def _show_failure_banner(self, target):
         grade = self._police_grade(target)
@@ -374,12 +357,11 @@ class MainPanel(ctk.CTkFrame):
             return "fédérale"
         return "locale"
 
-    def _reset_view(self):
-        if self.active_game:
-            self.active_game.destroy()
-            self.active_game = None
-
     def _alert_type(self, target):
-        if target.get("alert_type"):
-            return target["alert_type"]
-        return "Basse"
+        risk = target.get("risk", 1)
+        if risk <= 2:
+            return "Locale"
+        elif risk <= 4:
+            return "Étatique"
+        else:
+            return "Fédérale"

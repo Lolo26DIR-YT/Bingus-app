@@ -1,6 +1,5 @@
 import customtkinter as ctk
 
-
 class BriefingDialog(ctk.CTkToplevel):
     def __init__(self, parent, target, profile_name, proceed_callback):
         super().__init__(parent)
@@ -21,35 +20,47 @@ class BriefingDialog(ctk.CTkToplevel):
         description.configure(state="disabled")
 
         footer = ctk.CTkFrame(self, fg_color="#0b0c10")
-        footer.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
-        footer.columnconfigure((0, 1), weight=1)
-
-        cancel_button = ctk.CTkButton(footer, text="Annuler", command=self._cancel, fg_color="#282a36", hover_color="#44475a")
-        cancel_button.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        footer.grid(row=2, column=0, padx=20, pady=20, sticky="ew")
+        
         proceed_button = ctk.CTkButton(footer, text="Lancer le hack", command=self._proceed, fg_color="#45a29e")
         proceed_button.grid(row=0, column=1, sticky="ew", padx=(8, 0))
-
-    def _build_briefing_text(self, target, profile_name):
-        return (
-            f"🎯 CIBLE : {target['name']}\n"
-            f"📍 DISTANCE REQUISE : {target['distance_label']}\n"
-            f"🔴 NIVEAU DE RISQUE : {target['risk']}/5\n"
-            f"🚨 Alerte probable : {target.get('alert_type', 'Police locale')}\n"
-            f"⏱️ DURÉE ESTIMÉE : {target['duration']} secondes\n\n"
-            f"🧰 OUTILS REQUIS :\n"
-            + "\n".join([f"  • {tool}" for tool in target["tools"]])
-            + "\n\n"
-            f"Profil opérateur : {profile_name}\n"
-            f"Interaction attendue : {target['interaction']}\n"
-            f"Phase manuelle requise : Oui\n"
-            f"Une fenêtre dédiée s'ouvre pour le hack manuel. Cliquez sur Fait pour poursuivre.\n\n"
-            f"Résumé : {target['rp_description']}"
-        )
 
     def _proceed(self):
         self.proceed_callback(True)
         self.destroy()
 
-    def _cancel(self):
-        self.proceed_callback(False)
-        self.destroy()
+    def _build_briefing_text(self, target, profile_name):
+        # 1. Calcul de la durée
+        real_duration = target.get("duration", 30) / 20
+
+        # 2. Gestion du risque au format X/5
+        raw_risk = target.get("risk", 1)
+        try:
+            risk_val = int(raw_risk)
+        except (ValueError, TypeError):
+            risk_val = 1
+        
+        risk_str = f"{risk_val}/5"
+
+        text = (
+            f"--- RAPPORT DE BRIEFING OPERATIONNEL ---\n\n"
+            f"Cible identifiée : {target.get('name', 'Inconnue')}\n"
+            f"Profil : {profile_name}\n"
+            f"Portée requise : {target.get('distance_label', 'Inconnue')}\n"
+            f"Niveau de risque : {risk_str}\n"
+            f"Temps de traitement requis : {real_duration} secondes\n\n"
+            f"Matériel RP requis :\n"
+        )
+        
+        tools = target.get("tools", [])
+        if tools:
+            for tool in tools:
+                text += f" - {tool}\n"
+        else:
+            text += f" - Aucun matériel spécifique requis\n"
+            
+        text += (
+            f"\nDescription de la mission :\n"
+            f"{target.get('rp_description', 'Aucune description disponible.')}\n"
+        )
+        return text
