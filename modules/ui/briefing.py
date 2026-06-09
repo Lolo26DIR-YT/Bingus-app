@@ -31,7 +31,10 @@ class BriefingDialog(ctk.CTkToplevel):
 
     def _build_briefing_text(self, target, profile_name):
         # 1. Calcul de la durée
-        real_duration = target.get("duration", 30) / 20
+        base_duration = target.get("duration", 25) 
+        total_duration = base_duration + 5
+        real_duration = total_duration
+
 
         # 2. Gestion du risque au format X/5
         raw_risk = target.get("risk", 1)

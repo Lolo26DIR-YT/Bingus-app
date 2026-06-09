@@ -14,9 +14,10 @@ class HybridHackGame(ctk.CTkFrame):
         self.step_index = 0
         self.phase = "auto"
 
-        base_duration = self.target.get("duration", 30)
+        base_duration = target.get("duration", 25)
         self.total_duration = base_duration + 5 
-        self.remaining_seconds = self.total_duration
+        self.remaining_seconds = base_duration + 5
+
         
         self.total_duration = target.get("duration", 30)
         self.remaining_seconds = self.total_duration
@@ -87,18 +88,13 @@ class HybridHackGame(ctk.CTkFrame):
         self.update_timer()
 
     def update_timer(self):
-        # On ne travaille que si on est en phase "auto"
         if self.phase == "auto":
             if self.remaining_seconds > 0:
-                # On diminue simplement la valeur existante
                 self.remaining_seconds -= 1
                 self.timer_label.configure(text=f"Temps restant : {self.remaining_seconds}s")
-                
-                # On relance la fonction dans 1 seconde
                 self.after(1000, self.update_timer)
             else:
                 self.timer_label.configure(text="Temps écoulé !")
-                # Ici tu peux appeler ta fonction de fin de hack
 
     def start_auto_phase(self):
         if self.step_index < len(self.all_phases) - 1:
