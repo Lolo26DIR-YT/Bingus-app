@@ -1,4 +1,4 @@
-Bingus Hack Simulator est un outil de rôle pour GTA RP / FiveM.
+Bingus Hack Simulator est un outil de rôle pour GTA RP / FiveM
 
 LancemPour lancer l'app il faut executez le fichier suivant :
 
