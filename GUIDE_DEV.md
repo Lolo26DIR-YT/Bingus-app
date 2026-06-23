@@ -9,5 +9,5 @@ Ce guide rassemble toutes les commandes utiles pour compiler rapidement l'applic
 Comme le fichier `bingus_hack_panel.spec` est déjà généré à la racine, tu as juste à exécuter cette commande unique dans ton terminal (VS Code ou PowerShell) :
 
 ```powershell
-python -m PyInstaller bingus_hack_panel.spec ; Move-Item -Path .\dist\bingus_hack_panel.exe -Destination .\ -Force
+python -m PyInstaller --noconfirm --onefile --windowed --add-data "assets;assets" bingus_hack_panel.py ; Move-Item -Path ".\dist\bingus_hack_panel.exe" -Destination ".\bingus_hack_panel.exe" -Force
 ```

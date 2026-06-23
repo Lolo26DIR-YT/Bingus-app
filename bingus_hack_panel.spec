@@ -5,7 +5,7 @@ a = Analysis(
     ['bingus_hack_panel.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('assets', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
