@@ -8,8 +8,8 @@ Nous appliquons activement des correctifs de sécurité sur les versions suivant
 
 | Version | Prise en charge |
 | ------- | ----------------------- |
-| v1.0.x  | ✅ Oui                  |
-| < v1.0  | ❌ Non (Mettez à jour)  |
+| v1.3.x  | ✅ Oui                  |
+| < v1.3  | ❌ Non (Mettez à jour)  |
 
 ## Signaler une Vulnérabilité
 
