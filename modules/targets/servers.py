@@ -89,4 +89,14 @@ TARGETS = [
         "risk": 5,
         "duration": 1000,
     },
+    {
+        "id": "clean_logs",
+        "name": "Effacement des sauvegardes de logs (Log Purge Pro)",
+        "distance_label": "San Andreas + Robada",
+        "distance_level": 7,
+        "rp_description": "Opération niveau max avec botnet.",
+        "tools": ["Laptop", "Serveur Relay", "0-Day Kit", "Botnet"],
+        "risk": 5,
+        "duration": 150,
+    },
 ]

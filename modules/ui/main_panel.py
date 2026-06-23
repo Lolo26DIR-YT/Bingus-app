@@ -13,14 +13,11 @@ class HybridHackGame(ctk.CTkFrame):
         self.on_complete = on_complete
         self.step_index = 0
         self.phase = "auto"
+        self.is_cancelled = False  # Drapeau pour savoir si on a annulé le hack
 
         base_duration = target.get("duration", 25)
         self.total_duration = base_duration + 5 
         self.remaining_seconds = base_duration + 5
-
-        
-        self.total_duration = target.get("duration", 30)
-        self.remaining_seconds = self.total_duration
 
         # --- CALCUL DYNAMIQUE DU DÉLAI ---
         self.all_phases = [
@@ -57,8 +54,14 @@ class HybridHackGame(ctk.CTkFrame):
         # Zone d'affichage de la console
         self.console_box = ctk.CTkTextbox(self, fg_color="#0b0c10", text_color="#45a29e", font=ctk.CTkFont(family="Courier", size=13), corner_radius=8)
         self.console_box.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="nsew")
+        
+        # Configuration des couleurs dans la console
+        self.console_box.tag_config("red", foreground="#ff4d4d")
+        self.console_box.tag_config("blue", foreground="#00d2d3")
+        self.console_box.tag_config("orange", foreground="#ff9f43")
+        self.console_box.tag_config("green", foreground="#28a745")
 
-        # --- LABEL DU MINUTEUR (C'est lui qui manquait !) ---
+        # Label du Minuteur
         self.timer_label = ctk.CTkLabel(self, text="Temps estimé : --s", text_color="#66fcf1", font=ctk.CTkFont(size=12))
         self.timer_label.grid(row=2, column=0, padx=20, pady=(0, 5), sticky="e")
 
@@ -67,9 +70,14 @@ class HybridHackGame(ctk.CTkFrame):
         self.progress_bar.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
         self.progress_bar.set(0)
 
-        # Bouton d'action
+        # --- NOUVEAU : ZONE DES BOUTONS ---
+        self.actions_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.actions_frame.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.actions_frame.columnconfigure(0, weight=3) # Plus de place pour le bouton d'action
+        self.actions_frame.columnconfigure(1, weight=1) # Moins de place pour le cancel
+
         self.action_button = ctk.CTkButton(
-            self, 
+            self.actions_frame, 
             text="INITIALISATION...", 
             font=ctk.CTkFont(weight="bold"),
             fg_color="#45a29e", 
@@ -78,16 +86,32 @@ class HybridHackGame(ctk.CTkFrame):
             height=40,
             command=self.on_action_click
         )
-        self.action_button.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.action_button.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+
+        # Bouton d'annulation rouge vif
+        self.cancel_button = ctk.CTkButton(
+            self.actions_frame,
+            text="❌ CANCEL",
+            font=ctk.CTkFont(weight="bold"),
+            fg_color="#FF4C4C",
+            hover_color="#ff1a1a",
+            text_color="#ffffff",
+            height=40,
+            command=self.cancel_hack
+        )
+        self.cancel_button.grid(row=0, column=1, sticky="ew")
 
         # Écoute de la touche Entrée
         self.winfo_toplevel().bind("<Return>", self.on_enter_pressed)
 
-        # Lancement automatique (maintenant que timer_label existe, ça ne plantera plus)
+        # Lancement automatique
         self.start_auto_phase()
         self.update_timer()
 
     def update_timer(self):
+        if self.is_cancelled:
+            return # On stoppe le minuteur si annulé
+
         if self.phase == "auto":
             if self.remaining_seconds > 0:
                 self.remaining_seconds -= 1
@@ -97,12 +121,13 @@ class HybridHackGame(ctk.CTkFrame):
                 self.timer_label.configure(text="Temps écoulé !")
 
     def start_auto_phase(self):
+        if self.is_cancelled:
+            return # On stoppe l'affichage de la console si annulé
+
         if self.step_index < len(self.all_phases) - 1:
-            # --- Calcul du temps restant ---
             steps_left = (len(self.all_phases) - 1) - self.step_index
             seconds_left = int(steps_left * (self.step_delay / 1000))
             self.timer_label.configure(text=f"Temps restant : {seconds_left}s")
-            # -------------------------------
 
             current_text = self.all_phases[self.step_index]
             self.console_box.insert("end", f"[SYSTEM] {current_text}\n")
@@ -117,12 +142,33 @@ class HybridHackGame(ctk.CTkFrame):
             self.timer_label.configure(text="SÉQUENCE TERMINÉE")
             self.phase = "manual"
             self.progress_bar.set(0.9)
-            self.action_button.configure(text=f"APPUYER SUR ENTRÉE POUR INJECTER LE CODE FINAL")
+            self.action_button.configure(text="APPUYER SUR ENTRÉE POUR INJECTER LE CODE FINAL")
             self.console_box.insert("end", "\n[ATTENTION] Séquence finale en attente de validation manuelle...\n")
             self.console_box.see("end")
 
     def on_enter_pressed(self, event):
         self.on_action_click()
+
+    def cancel_hack(self):
+        """Coupe le piratage proprement et alerte le système."""
+        if self.phase in ["complete", "failed_standard", "failed_blocked", "failed_fdo", "cancelled"]:
+            return # Déjà terminé, on ne peut pas annuler
+
+        self.is_cancelled = True
+        self.phase = "cancelled"
+        
+        self.timer_label.configure(text="ANNULATION FORCÉE", text_color="#FF4C4C")
+        self.progress_bar.configure(progress_color="#FF4C4C")
+        
+        self.console_box.insert("end", "\n[!] OPERATION ANNULÉE PAR L'OPERATEUR [!]\n", "red")
+        self.console_box.insert("end", "[SYSTEM] Déconnexion d'urgence. Nettoyage des traces...\n", "red")
+        self.console_box.see("end")
+        
+        self.action_button.configure(text="FERMER L'INTERFACE", fg_color="#FF4C4C")
+        self.cancel_button.configure(state="disabled") # On désactive le bouton une fois cliqué
+        
+        if self.on_complete:
+            self.on_complete(False, reason="CANCEL", time_left=self.remaining_seconds)
 
     def on_action_click(self):
         if self.phase == "manual":
@@ -139,6 +185,7 @@ class HybridHackGame(ctk.CTkFrame):
                 self.console_box.see("end")
                 
                 self.action_button.configure(text="SYSTÈME BLOQUÉ - FERMER", fg_color="#ff4d4d")
+                self.cancel_button.configure(state="disabled")
                 if self.on_complete:
                     self.on_complete(False)
 
@@ -151,13 +198,12 @@ class HybridHackGame(ctk.CTkFrame):
                 self.console_box.insert("end", "\n[ALERTE] TRANSMISSION COMPROMISE !\n", "blue")
                 self.console_box.insert("end", "[INFO] Forces de l'ordre alertées.\n", "blue")
                 
-                # --- FORCER L'AFFICHAGE ---
-                self.update_idletasks() # Recalcule la mise en page
-                self.console_box.see("end") # Scrolle vers le bas
+                self.update_idletasks()
+                self.console_box.see("end")
                 
                 self.action_button.configure(text="ALERTE FDO - QUITTER", fg_color="#00d2d3")
+                self.cancel_button.configure(state="disabled")
                 
-                # Affichage de la bannière
                 if self.master and hasattr(self.master.master, "_show_failure_banner"):
                     self.master.master._show_failure_banner(self.target)
                     
@@ -175,6 +221,7 @@ class HybridHackGame(ctk.CTkFrame):
                 self.console_box.see("end")
                 
                 self.action_button.configure(text="ÉCHEC DU HACK - FERMER", fg_color="#ff9f43")
+                self.cancel_button.configure(state="disabled")
                 if self.on_complete:
                     self.on_complete(False)
 
@@ -185,18 +232,17 @@ class HybridHackGame(ctk.CTkFrame):
                 self.console_box.insert("end", "\n[SUCCÈS] Injection validée ! Accès total accordé.\n", "green")
                 self.console_box.see("end")
                 self.action_button.configure(text="FERMER L'INTERFACE", fg_color="#28a745")
+                self.cancel_button.configure(state="disabled")
                 if self.on_complete:
                     self.on_complete(True)
 
-        # Gestion de la fermeture (clic sur le bouton après résultat)
-        elif self.phase in ["complete", "failed_standard", "failed_blocked", "failed_fdo"]:
-            # On retire la bannière de police si elle est affichée
+        elif self.phase in ["complete", "failed_standard", "failed_blocked", "failed_fdo", "cancelled"]:
             if self.master and hasattr(self.master.master, "failure_banner"):
                 self.master.master.failure_banner.grid_remove()
             
-            # Nettoyage clavier et destruction
             self.winfo_toplevel().unbind("<Return>")
             self.destroy()
+
 class MainPanel(ctk.CTkFrame):
     def __init__(self, parent, on_request_log=None, on_start_hack=None, on_toggle_sidebar=None, **kwargs):
         super().__init__(parent, fg_color="#131820", corner_radius=0, **kwargs)
@@ -211,7 +257,7 @@ class MainPanel(ctk.CTkFrame):
         self.rowconfigure(1, weight=1)  
         self.rowconfigure(2, weight=0)  
 
-        # 1. Bannière d'alerte Police
+        # Bannière d'alerte Police
         self.failure_banner = ctk.CTkLabel(
             self,
             text="",
@@ -223,15 +269,14 @@ class MainPanel(ctk.CTkFrame):
         )
         self.failure_banner.grid(row=0, column=0, padx=20, pady=(15, 0), sticky="ew")
         self.failure_banner.grid_remove()
-        
 
-        # 2. Zone de Contenu Dynamique
+        # Zone de Contenu Dynamique
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.grid(row=1, column=0, sticky="nsew")
         self.content_frame.columnconfigure(0, weight=1)
         self.content_frame.rowconfigure(0, weight=1)
 
-        # 3. Bas de page épuré
+        # Bas de page épuré
         self.setup_profile_footer()
 
         # Affichage de l'écran d'accueil de base
@@ -278,7 +323,6 @@ class MainPanel(ctk.CTkFrame):
 
     def show_target(self, target):
         self.current_target = target
-        # ICI : On cache la bannière dès qu'on sélectionne une nouvelle cible
         self.failure_banner.grid_remove() 
         
         for widget in self.content_frame.winfo_children():
@@ -316,8 +360,7 @@ class MainPanel(ctk.CTkFrame):
         if self.on_start_hack:
             self.on_start_hack(target, profile)
 
-    # Ajoute "=None" ici pour éviter l'erreur "reason is not defined"
-    def on_hack_complete(self, success, reason=None):
+    def on_hack_complete(self, success, reason=None, time_left=0):
         if success:
             if self.on_request_log:
                 self.on_request_log(f"Hack réussi avec succès sur : {self.current_target.get('name', 'Cible')}")
@@ -328,11 +371,16 @@ class MainPanel(ctk.CTkFrame):
                 self._video_player.play()
                 self.after(6000, self._video_player.stop)
         else:
-            # On vérifie la raison ici
             if reason == "FDO":
-                self.on_request_log(f"!!! ALERTE FDO !!! Trace activée sur {self.current_target.get('name')}")
+                if self.on_request_log:
+                    self.on_request_log(f"!!! ALERTE FDO !!! Trace activée sur {self.current_target.get('name')}")
+            elif reason == "CANCEL":
+                if self.on_request_log:
+                    # Ajout d'une pastille rouge visible dans le log pour simuler l'affichage en rouge
+                    self.on_request_log(f"🔴 ANNULÉ : Piratage sur {self.current_target.get('name')} interrompu. Temps restant : {time_left}s.")
             else:
-                self.on_request_log(f"Hack échoué : {self.current_target.get('name', 'Cible')}")
+                if self.on_request_log:
+                    self.on_request_log(f"Hack échoué : {self.current_target.get('name', 'Cible')}")
 
     def _on_briefing_result(self, proceed):
         if proceed and self.current_target:
