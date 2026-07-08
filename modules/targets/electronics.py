@@ -10,6 +10,16 @@ TARGETS = [
         "duration": 110,
     },
     {
+        "id": "scan_copy_phone",
+        "name": "Scan & Copy Data Phone",
+        "distance_label": "Courte portée (≤ 5m)",
+        "distance_level": 2,
+        "rp_description": "Scan le téléphone de la personne visé et copie ses données personnelles (photo, sms, localisations, etc) ou pirate ses comptes (facebook, instagram, snapchat, etc).",
+        "tools": ["Laptop", "WiFi Pineapple"],
+        "risk": 3,
+        "duration": 15,
+    },
+    {
         "id": "bulle_cctv",
         "name": "CCTV Break Down",
         "distance_label": "Portée moyenne (≤ 50m)",

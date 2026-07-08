@@ -159,4 +159,14 @@ TARGETS = [
         "risk": 2,
         "duration": 65,
     },
+    {
+        "id": "intrusion",
+        "name": "Fausse alerte intrusion/incendie",
+        "distance_label": "San Andreas + Robada",
+        "distance_level": 7,
+        "rp_description": "Allumer l'alarme intrusion ou l'alarme incendie pour crée une diversion.",
+        "tools": ["Alarm Panel", "Laptop", "Bypass Kit"],
+        "risk": 3,
+        "duration": 165,
+    },
 ]

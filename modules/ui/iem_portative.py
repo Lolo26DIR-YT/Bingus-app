@@ -10,7 +10,7 @@ class IEMPage(ctk.CTkFrame):
         # Titre de la page
         self.title_label = ctk.CTkLabel(
             self, 
-            text="⚡ Brouilleur IEM Portatif", 
+            text="⚡ Brouilleur Informatique Portable", 
             font=ctk.CTkFont(family="Courier", size=24, weight="bold"),
             text_color="#66fcf1"
         )
@@ -53,7 +53,7 @@ class IEMPage(ctk.CTkFrame):
         # ---- SECTION TOGGLE (ON/OFF) ----
         self.iem_switch = ctk.CTkSwitch(
             self, 
-            text="Alimentation IEM", 
+            text="Alimentation Outil de désactivation informatique", 
             command=self.toggle_iem, 
             font=ctk.CTkFont(family="Courier", size=16, weight="bold"),
             text_color="#66fcf1",
@@ -79,11 +79,11 @@ class IEMPage(ctk.CTkFrame):
             
             # Envoi automatique du log dans la console de ton application principale
             if hasattr(self.master, 'add_log'):
-                self.master.add_log(f"IEM : Onde de choc enclenchée ! Portée : {distance_actuelle}m.")
+                self.master.add_log(f"Désactivateur informatique : Onde de choc enclenchée ! Portée : {distance_actuelle}m.")
         else:
             # OFF : On repasse en rouge et on libère le curseur
             self.status_label.configure(text="Statut : DÉSACTIVÉ", text_color="#FF4C4C")
             self.distance_slider.configure(state="normal")
             
             if hasattr(self.master, 'add_log'):
-                self.master.add_log("IEM : Système désactivé. Libération de la fréquence.")
+                self.master.add_log("Désactivateur informatique : Système désactivé. Libération de la fréquence.")
